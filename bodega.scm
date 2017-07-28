@@ -86,7 +86,7 @@
       freqs)))
 
 (define (dynamic z+p+g)
-  (let* ((d+p   (append (car z+p+g) (cadr z+p+g)))
+  (let* ((d+p   (map real-part (append (car z+p+g) (cadr z+p+g))))
 	 (left  (- (apply max d+p)))
 	 (right (- (apply min d+p))))
     ; cover the whole input range, if we have a single pole/zero then we center
