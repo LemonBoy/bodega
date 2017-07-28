@@ -1,5 +1,9 @@
 (use numbers srfi-4 lapack-extras)
 
+(define log10
+  (let ((ln10 (log 10)))
+    (lambda (x) (/ (log x) ln10))))
+
 (define (proper? tf)
   (<= (length (car tf)) (length (cadr tf))))
 
@@ -65,14 +69,14 @@
 	  (loop (fx- n 1) (+ e step) (cons (expt 10 e) v))))))
 
 ; transform the transfer function into its zero-pole-gain form
-(define (z-p-g tf)
+(define (zero-pole-gain tf)
   (let ((num (car  tf))
 	(den (cadr tf)))
-    (values (poly-roots num) (poly-roots den) (/ (car num) (car den)))))
+    (list (poly-roots num) (poly-roots den) (/ (car num) (car den)))))
 
 ; evaluate the transfer function at each frequency
-(define (freq-response tf freqs)
-  (let-values (((zeros poles gain) (z-p-g tf)))
+(define (freq-response z+p+g freqs)
+  (let-optionals z+p+g ((zeros 0) (poles 0) (gain 0))
     (map
       (lambda (om)
 	(let ((jw (make-rectangular 0 om)))
@@ -81,12 +85,22 @@
 		(foldl (lambda (acc x) (* acc (- jw x))) 1.0 poles)))))
       freqs)))
 
+(define (dynamic z+p+g)
+  (let* ((d+p   (append (car z+p+g) (cadr z+p+g)))
+	 (left  (- (apply max d+p)))
+	 (right (- (apply min d+p))))
+    ; cover the whole input range, if we have a single pole/zero then we center
+    ; the whole plot around it
+    ; XXX: pick an optimal number of divisions based on the [left,right] range
+    (logspace (- (inexact->exact (round (log10 left)))  2)
+	      (+ (inexact->exact (round (log10 right))) 2)
+	      4000)))
+
 ; evaluate the bode plot for the transfer function
-(define (bode tf start end step)
+(define (bode tf #!optional pulse)
   ; convert x to dB
-  (define ->dB
-    (let ((ln10 (log 10)))
-      (lambda (x) (* 20 (/ (log x) ln10)))))
+  (define (->dB x)
+    (* 20 (log10 x)))
   ; convert x to degrees
   (define ->deg
     (let ((k (/ 180 (atan 0 -1))))
@@ -95,8 +109,9 @@
   #;(unless (proper? tf)
     (error "Improper transfer function"))
 
-  (let* ((pulse (logspace start end step))
-	 (resp  (freq-response tf pulse))
+  (let* ((z+p+g (zero-pole-gain tf))
+	 (pulse (or pulse (dynamic z+p+g)))
+	 (resp  (freq-response z+p+g pulse))
 	 (phase (map (o ->deg angle) resp))
 	 (mag   (map (o ->dB magnitude) resp)))
     (values pulse mag phase)))
@@ -131,12 +146,15 @@
 	    "reset") "\n")))))
 
 (let-values (((pulse mag phase)
-	      (bode 
-		; '((100 100) (1 110 1000))
+	      (bode
+		; system transfer function
+		'((100 100) (1 110 1000))
 		; '((1 0.1 7.5) (1 0.12 9 0 0))
 		; '((-0.1 -2.4 -181 -1950) (1 3.3 990 2600))
-		'((100) (1 30))
-		-2 4 999)))
+		; '((100) (1 30))
+		; frequency range
+		#f #;(logspace -2 4 999)
+		)))
   (dump-gnuplot-script pulse mag phase))
 
 ; (print (z-p-g '((-10 20 0) (1 7 20 28 19 5))))
