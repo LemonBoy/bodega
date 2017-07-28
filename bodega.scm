@@ -51,7 +51,9 @@
 	       ; workspace and its dimension
 	       ; XXX: Evaluate the required size by passing -1 and fetch the
 	       ; output in out[0]
-	       (make-f64vector 16) 16)))
+	       (make-f64vector 16) 16
+	       ; info variable, already checked by the wrapper function
+	       (make-s32vector 1))))
       (map make-rectangular (f64vector->list wr) (f64vector->list wi)))))
 
 (define (poly-roots poly)
@@ -148,12 +150,15 @@
 (let-values (((pulse mag phase)
 	      (bode
 		; system transfer function
-		'((100 100) (1 110 1000))
+		; '((100 100) (1 110 1000))
 		; '((1 0.1 7.5) (1 0.12 9 0 0))
 		; '((-0.1 -2.4 -181 -1950) (1 3.3 990 2600))
+		; '((30 300) (1 3 50))
 		; '((100) (1 30))
+		'((100 100) (1 110 1000))
 		; frequency range
-		#f #;(logspace -2 4 999)
+		#f
+		; (logspace -2 4 999)
 		)))
   (dump-gnuplot-script pulse mag phase))
 
