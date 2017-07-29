@@ -26,7 +26,7 @@
     ; zero-th grade terms in the latest column
     (do ((i (- ord 1) (+ i ord)) (c (reverse (cdr poly)) (cdr c)))
       ((>= i (* ord ord)))
-      (f64vector-set! mat i (- (car c))))
+      (f64vector-set! mat i (exact->inexact (- (car c)))))
     ; identity matrix shifted down by one row
     (do ((i ord (+ i (+ ord 1))))
       ((>= i (* ord ord)))
@@ -97,6 +97,15 @@
     (logspace (- (inexact->exact (round (log10 left)))  2)
 	      (+ (inexact->exact (round (log10 right))) 2)
 	      4000)))
+
+; evaluate the nyquist plot for the transfer function
+(define (nyquist tf #!optional pulse)
+  (let* ((z+p+g (zero-pole-gain tf))
+	 (pulse (or pulse (dynamic z+p+g)))
+	 (resp  (freq-response z+p+g pulse))
+	 (real  (map real-part resp))
+	 (imag  (map imag-part resp)))
+    (values real imag)))
 
 ; evaluate the bode plot for the transfer function
 (define (bode tf #!optional pulse)
